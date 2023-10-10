@@ -66,10 +66,11 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
         gate_gradients=True, use_averaging=use_averaging, **kw_args)
 
   def FindNode(self, name):
-    for node in tf.get_default_graph().as_graph_def().node:
-      if node.name == name:
-        return node
-    return None
+    return next(
+        (node for node in tf.get_default_graph().as_graph_def().node
+         if node.name == name),
+        None,
+    )
 
   def NodeFound(self, name):
     return self.FindNode(name) is not None

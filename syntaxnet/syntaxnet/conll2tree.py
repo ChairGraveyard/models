@@ -45,8 +45,9 @@ def to_dict(sentence):
   Returns:
     Dictionary mapping tokens to children.
   """
-  token_str = ['%s %s %s' % (token.word, token.tag, token.label)
-               for token in sentence.token]
+  token_str = [
+      f'{token.word} {token.tag} {token.label}' for token in sentence.token
+  ]
   children = [[] for token in sentence.token]
   root = -1
   for i in range(0, len(sentence.token)):

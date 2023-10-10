@@ -57,8 +57,17 @@ def tanh_cutoff(x, cutoff):
 def conv_gru(inpts, mem, kw, kh, nmaps, cutoff, prefix):
   """Convolutional GRU."""
   def conv_lin(args, suffix, bias_start):
-    return conv_linear(args, kw, kh, len(args) * nmaps, nmaps, True, bias_start,
-                       prefix + "/" + suffix)
+    return conv_linear(
+        args,
+        kw,
+        kh,
+        len(args) * nmaps,
+        nmaps,
+        True,
+        bias_start,
+        f"{prefix}/{suffix}",
+    )
+
   reset = sigmoid_cutoff(conv_lin(inpts + [mem], "r", 1.0), cutoff)
   # candidate = tanh_cutoff(conv_lin(inpts + [reset * mem], "c", 0.0), cutoff)
   candidate = tf.tanh(conv_lin(inpts + [reset * mem], "c", 0.0))
@@ -106,7 +115,7 @@ def relaxed_distance(rx_step):
   """Distance between relaxed variables and their average."""
   res, ops, rx_done = [], [], {}
   for v in tf.trainable_variables():
-    if v.name[0:2] == "RX":
+    if v.name[:2] == "RX":
       rx_name = v.op.name[v.name.find("/") + 1:]
       if rx_name not in rx_done:
         avg, dist_loss = relaxed_average(rx_name, rx_step)
@@ -204,7 +213,7 @@ class NeuralGPU(object):
         scales = [shifted_mask[i] * (1.0 - shifted_mask[i+1])
                   for i in xrange(length)]
         scales = [tf.reshape(s, [-1, 1, 1, 1]) for s in scales]
-        mask = tf.concat(1, mask[0:length])  # batch x length
+        mask = tf.concat(1, mask[:length])
         weights = mask
         # Add a height dimension to mask to use later for masking.
         mask = tf.reshape(mask, [-1, length, 1, 1])
@@ -292,16 +301,16 @@ class NeuralGPU(object):
     """Run a step of the network."""
     assert len(inp) == len(target)
     length = len(target)
-    feed_in = {}
-    feed_in[self.noise_param.name] = noise_param if noise_param else 0.0
-    feed_in[self.do_training.name] = 1.0 if do_backward else 0.0
+    feed_in = {
+        self.noise_param.name: noise_param if noise_param else 0.0,
+        self.do_training.name: 1.0 if do_backward else 0.0,
+    }
     feed_out = []
     index = len(data_utils.bins)
     if length < data_utils.bins[-1] + 1:
       index = data_utils.bins.index(length)
     if do_backward:
-      feed_out.append(self.updates[index])
-      feed_out.append(self.grad_norms[index])
+      feed_out.extend((self.updates[index], self.grad_norms[index]))
     feed_out.append(self.losses[index])
     for l in xrange(length):
       feed_in[self.input[l].name] = inp[l]
@@ -309,8 +318,7 @@ class NeuralGPU(object):
       feed_in[self.target[l].name] = target[l]
       feed_out.append(self.outputs[index][l])
     if get_steps:
-      for l in xrange(length+1):
-        feed_out.append(self.steps[index][l])
+      feed_out.extend(self.steps[index][l] for l in xrange(length+1))
     res = sess.run(feed_out, feed_in)
     offset = 0
     norm = None

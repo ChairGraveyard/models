@@ -113,10 +113,12 @@ def initialize(sess):
   data.print_out(msg3)
 
   # Create checkpoint directory if it does not exist.
-  checkpoint_dir = os.path.join(FLAGS.train_dir, "neural_gpu%s"
-                                % ("" if FLAGS.jobid < 0 else str(FLAGS.jobid)))
+  checkpoint_dir = os.path.join(
+      FLAGS.train_dir,
+      f'neural_gpu{"" if FLAGS.jobid < 0 else str(FLAGS.jobid)}',
+  )
   if not gfile.IsDirectory(checkpoint_dir):
-    data.print_out("Creating checkpoint directory %s." % checkpoint_dir)
+    data.print_out(f"Creating checkpoint directory {checkpoint_dir}.")
     gfile.MkDir(checkpoint_dir)
 
   # Create model and initialize it.
@@ -134,8 +136,7 @@ def initialize(sess):
   # Load model from parameters if a checkpoint exists.
   ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
   if ckpt and gfile.Exists(ckpt.model_checkpoint_path):
-    data.print_out("Reading model parameters from %s"
-                   % ckpt.model_checkpoint_path)
+    data.print_out(f"Reading model parameters from {ckpt.model_checkpoint_path}")
     model.saver.restore(sess, ckpt.model_checkpoint_path)
 
   # Check if there are ensemble models and get their checkpoints.
@@ -144,7 +145,7 @@ def initialize(sess):
   for ensemble_dir in ensemble_dir_list:
     ckpt = tf.train.get_checkpoint_state(ensemble_dir)
     if ckpt and gfile.Exists(ckpt.model_checkpoint_path):
-      data.print_out("Found ensemble model %s" % ckpt.model_checkpoint_path)
+      data.print_out(f"Found ensemble model {ckpt.model_checkpoint_path}")
       ensemble.append(ckpt.model_checkpoint_path)
 
   # Return the model and needed variables.
@@ -371,7 +372,7 @@ def animate(l, test_data, anim_size):
     out = [out_raw[i][batch] for i in xrange(len(text_fields))]
     if 0 in out:
       i = out.index(0)
-      out = out[0:i] + [0 for _ in xrange(len(out) - i)]
+      out = out[:i] + [0 for _ in xrange(len(out) - i)]
     # Show the state after the first frames.
     if index >= 2*xf:
       im.set_array(steps[min(length - 1, index - 2*xf)][batch])

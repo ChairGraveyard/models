@@ -144,14 +144,14 @@ class ParsingReaderOpsTest(test_util.TensorFlowTestCase):
         trainable_param_names = builder.params.keys()
       if builder._use_averaging:
         for v in trainable_param_names:
-          avg = builder.variables['%s_avg_var' % v].eval()
+          avg = builder.variables[f'{v}_avg_var'].eval()
           tf.assign(builder.params[v], avg).eval()
 
       # Reset for pseudo eval.
       costs = []
       gold_slots = []
       alive_stepss = []
-      for step in range(10):
+      for _ in range(10):
         cost, gold_slot, alive_steps = sess.run(
             [t['cost'], t['gold_slot'], t['alive_steps']])
         costs.append(cost)

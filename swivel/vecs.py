@@ -32,8 +32,7 @@ class Vecs(object):
 
       # Make sure that the file size seems reasonable.
       if size % (4 * n) != 0:
-        raise IOError(
-            'unexpected file size for binary vector file %s' % rows_filename)
+        raise IOError(f'unexpected file size for binary vector file {rows_filename}')
 
       # Memory map the rows.
       dim = size / (4 * n)

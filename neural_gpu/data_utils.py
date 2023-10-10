@@ -35,9 +35,7 @@ log_filename = ""
 
 
 def pad(l):
-  for b in bins:
-    if b >= l: return b
-  return forward_max
+  return next((b for b in bins if b >= l), forward_max)
 
 
 train_set = {}
@@ -45,7 +43,7 @@ test_set = {}
 for some_task in all_tasks:
   train_set[some_task] = []
   test_set[some_task] = []
-  for all_max_len in xrange(10000):
+  for _ in xrange(10000):
     train_set[some_task].append([])
     test_set[some_task].append([])
 
@@ -66,8 +64,7 @@ def add(n1, n2, base=10):
       carry = 1
   while res and res[-1] == 0:
     res = res[:-1]
-  if res: return res
-  return [0]
+  return res if res else [0]
 
 
 def init_data(task, length, nbr_cases, nclass):
@@ -83,10 +80,10 @@ def init_data(task, length, nbr_cases, nclass):
     if task in ["add", "badd", "qadd"]:
       res = add(d1, d2, base)
     elif task in ["mul", "bmul"]:
-      d1n = sum([d * (base ** i) for i, d in enumerate(d1)])
-      d2n = sum([d * (base ** i) for i, d in enumerate(d2)])
+      d1n = sum(d * (base ** i) for i, d in enumerate(d1))
+      d2n = sum(d * (base ** i) for i, d in enumerate(d2))
       if task == "bmul":
-        res = [int(x) for x in list(reversed(str(bin(d1n * d2n))))[:-2]]
+        res = [int(x) for x in list(reversed(bin(d1n * d2n)))[:-2]]
       else:
         res = [int(x) for x in list(reversed(str(d1n * d2n)))]
     else:
@@ -108,7 +105,7 @@ def init_data(task, length, nbr_cases, nclass):
     """Random data pair for reverse2 task. Total length should be <= l."""
     inp = [(np.random.randint(nclass - 1) + 1,
             np.random.randint(nclass - 1) + 1) for _ in xrange(l/2)]
-    res = [i for i in reversed(inp)]
+    res = list(reversed(inp))
     return [x for p in inp for x in p], [x for p in res for x in p]
 
   def rand_search_pair(l):
@@ -137,7 +134,7 @@ def init_data(task, length, nbr_cases, nclass):
     elif task == "id":
       return inp
     elif task == "rev":
-      return [i for i in reversed(inp)]
+      return list(reversed(inp))
     elif task == "incr":
       carry = 1
       res = []
@@ -158,7 +155,7 @@ def init_data(task, length, nbr_cases, nclass):
     elif task == "right-shift":
       return [inp[l+1] for l in xrange(len(inp))]
     else:
-      print_out("Unknown spec for task " + str(task))
+      print_out(f"Unknown spec for task {str(task)}")
       sys.exit()
 
   l = length
@@ -207,15 +204,13 @@ def to_symbol(i):
   """Covert ids to text."""
   if i == 0: return ""
   if i == 11: return "+"
-  if i == 12: return "*"
-  return str(i-1)
+  return "*" if i == 12 else str(i-1)
 
 
 def to_id(s):
   """Covert text to ids."""
   if s == "+": return 11
-  if s == "*": return 12
-  return int(s) + 1
+  return 12 if s == "*" else int(s) + 1
 
 
 def get_batch(max_length, batch_size, do_train, task, offset=None, preset=None):
@@ -224,8 +219,7 @@ def get_batch(max_length, batch_size, do_train, task, offset=None, preset=None):
   targets = []
   length = max_length
   if preset is None:
-    cur_set = test_set[task]
-    if do_train: cur_set = train_set[task]
+    cur_set = train_set[task] if do_train else test_set[task]
     while not cur_set[length]:
       length -= 1
   pad_length = pad(length)
@@ -238,8 +232,8 @@ def get_batch(max_length, batch_size, do_train, task, offset=None, preset=None):
       elem = preset
     inp, target = elem[0], elem[1]
     assert len(inp) == length
-    inputs.append(inp + [0 for l in xrange(pad_length - len(inp))])
-    targets.append(target + [0 for l in xrange(pad_length - len(target))])
+    inputs.append(inp + [0 for _ in xrange(pad_length - len(inp))])
+    targets.append(target + [0 for _ in xrange(pad_length - len(target))])
   res_input = []
   res_target = []
   for l in xrange(pad_length):
@@ -310,7 +304,5 @@ def accuracy(inpt, output, target, batch_size, nprint):
 
 
 def safe_exp(x):
-  perp = 10000
-  if x < 100: perp = math.exp(x)
-  if perp > 10000: return 10000
-  return perp
+  perp = math.exp(x) if x < 100 else 10000
+  return min(perp, 10000)

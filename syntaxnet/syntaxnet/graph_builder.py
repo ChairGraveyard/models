@@ -205,10 +205,8 @@ class GreedyParser(object):
 
   @property
   def embedding_size(self):
-    size = 0
-    for i in range(self._feature_size):
-      size += self._num_features[i] * self._embedding_sizes[i]
-    return size
+    return sum(self._num_features[i] * self._embedding_sizes[i]
+               for i in range(self._feature_size))
 
   def _AddParam(self,
                 shape,
@@ -248,12 +246,12 @@ class GreedyParser(object):
         else:
           ema = tf.train.ExponentialMovingAverage(decay=self._averaging_decay,
                                                   num_updates=step)
-        self._averaging[name + '_avg_update'] = ema.apply([param])
-        self.variables[name + '_avg_var'] = ema.average(param)
-        self.inits[name + '_avg_init'] = state_ops.init_variable(
+        self._averaging[f'{name}_avg_update'] = ema.apply([param])
+        self.variables[f'{name}_avg_var'] = ema.average(param)
+        self.inits[f'{name}_avg_init'] = state_ops.init_variable(
             ema.average(param), tf.zeros_initializer)
-    return (self.variables[name + '_avg_var'] if return_average else
-            self.params[name])
+    return (self.variables[f'{name}_avg_var']
+            if return_average else self.params[name])
 
   def GetStep(self):
     def OnesInitializer(shape, dtype=tf.float32):
@@ -320,16 +318,16 @@ class GreedyParser(object):
     """
     assert len(feature_endpoints) == self._feature_size
 
-    # Create embedding layer.
-    embeddings = []
-    for i in range(self._feature_size):
-      embeddings.append(self._AddEmbedding(feature_endpoints[i],
-                                           self._num_features[i],
-                                           self._num_feature_ids[i],
-                                           self._embedding_sizes[i],
-                                           i,
-                                           return_average=return_average))
-
+    embeddings = [
+        self._AddEmbedding(
+            feature_endpoints[i],
+            self._num_features[i],
+            self._num_feature_ids[i],
+            self._embedding_sizes[i],
+            i,
+            return_average=return_average,
+        ) for i in range(self._feature_size)
+    ]
     last_layer = tf.concat(1, embeddings)
     last_layer_size = self.embedding_size
 

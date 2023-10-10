@@ -134,17 +134,18 @@ def _convert_to_example(filename, image_buffer, label, text, height, width):
   channels = 3
   image_format = 'JPEG'
 
-  example = tf.train.Example(features=tf.train.Features(feature={
-      'image/height': _int64_feature(height),
-      'image/width': _int64_feature(width),
-      'image/colorspace': _bytes_feature(colorspace),
-      'image/channels': _int64_feature(channels),
-      'image/class/label': _int64_feature(label),
-      'image/class/text': _bytes_feature(text),
-      'image/format': _bytes_feature(image_format),
-      'image/filename': _bytes_feature(os.path.basename(filename)),
-      'image/encoded': _bytes_feature(image_buffer)}))
-  return example
+  return tf.train.Example(features=tf.train.Features(
+      feature={
+          'image/height': _int64_feature(height),
+          'image/width': _int64_feature(width),
+          'image/colorspace': _bytes_feature(colorspace),
+          'image/channels': _int64_feature(channels),
+          'image/class/label': _int64_feature(label),
+          'image/class/text': _bytes_feature(text),
+          'image/format': _bytes_feature(image_format),
+          'image/filename': _bytes_feature(os.path.basename(filename)),
+          'image/encoded': _bytes_feature(image_buffer),
+      }))
 
 
 class ImageCoder(object):
@@ -203,7 +204,7 @@ def _process_image(filename, coder):
 
   # Convert any PNG to JPEG's for consistency.
   if _is_png(filename):
-    print('Converting PNG to JPEG for %s' % filename)
+    print(f'Converting PNG to JPEG for {filename}')
     image_data = coder.png_to_jpeg(image_data)
 
   # Decode the RGB JPEG.
@@ -297,11 +298,8 @@ def _process_image_files(name, filenames, texts, labels, num_shards):
 
   # Break all images into batches with a [ranges[i][0], ranges[i][1]].
   spacing = np.linspace(0, len(filenames), FLAGS.num_threads + 1).astype(np.int)
-  ranges = []
   threads = []
-  for i in xrange(len(spacing) - 1):
-    ranges.append([spacing[i], spacing[i+1]])
-
+  ranges = [[spacing[i], spacing[i+1]] for i in xrange(len(spacing) - 1)]
   # Launch a thread for each batch.
   print('Launching %d threads for spacings: %s' % (FLAGS.num_threads, ranges))
   sys.stdout.flush()
@@ -357,7 +355,7 @@ def _find_image_files(data_dir, labels_file):
     texts: list of strings; each string is the class, e.g. 'dog'
     labels: list of integer; each integer identifies the ground truth.
   """
-  print('Determining list of input files and labels from %s.' % data_dir)
+  print(f'Determining list of input files and labels from {data_dir}.')
   unique_labels = [l.strip() for l in tf.gfile.FastGFile(
       labels_file, 'r').readlines()]
 
@@ -365,12 +363,9 @@ def _find_image_files(data_dir, labels_file):
   filenames = []
   texts = []
 
-  # Leave label index 0 empty as a background class.
-  label_index = 1
-
   # Construct the list of JPEG files and labels.
-  for text in unique_labels:
-    jpeg_file_path = '%s/%s/*' % (data_dir, text)
+  for label_index, text in enumerate(unique_labels, start=1):
+    jpeg_file_path = f'{data_dir}/{text}/*'
     matching_files = tf.gfile.Glob(jpeg_file_path)
 
     labels.extend([label_index] * len(matching_files))
@@ -380,8 +375,6 @@ def _find_image_files(data_dir, labels_file):
     if not label_index % 100:
       print('Finished finding files in %d of %d classes.' % (
           label_index, len(labels)))
-    label_index += 1
-
   # Shuffle the ordering of all image files in order to guarantee
   # random ordering of the images with respect to label in the
   # saved TFRecord files. Make the randomization repeatable.
@@ -417,7 +410,7 @@ def main(unused_argv):
   assert not FLAGS.validation_shards % FLAGS.num_threads, (
       'Please make the FLAGS.num_threads commensurate with '
       'FLAGS.validation_shards')
-  print('Saving results to %s' % FLAGS.output_directory)
+  print(f'Saving results to {FLAGS.output_directory}')
 
   # Run it!
   _process_dataset('validation', FLAGS.validation_directory,
